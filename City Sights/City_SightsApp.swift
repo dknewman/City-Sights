@@ -12,6 +12,7 @@ struct City_SightsApp: App {
     var body: some Scene {
         WindowGroup {
             LaunchView()
+            
         }
     }
 }
