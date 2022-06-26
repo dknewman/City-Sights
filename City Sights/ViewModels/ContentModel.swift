@@ -10,6 +10,8 @@ import CoreLocation
 class ContentModel: NSObject, ObservableObject, CLLocationManagerDelegate {
     
     var locationManager = CLLocationManager()
+    @Published var restaurants = [Business]()
+    @Published var sights = [Business]()
     
     override init(){
         
@@ -45,8 +47,8 @@ class ContentModel: NSObject, ObservableObject, CLLocationManagerDelegate {
             
             //Stop requesting location
             locationManager.stopUpdatingLocation()
-            // getBusinesses(category: "arts", location: userLocation!)
-            getBusinesses(category: "restaurants", location: userLocation!)
+            getBusinesses(category: Constants.sightsKey, location: userLocation!)
+            getBusinesses(category: Constants.restaurantsKey, location: userLocation!)
             
         }
     }
@@ -54,19 +56,13 @@ class ContentModel: NSObject, ObservableObject, CLLocationManagerDelegate {
     
     func getBusinesses(category: String, location:CLLocation){
         
-        //create url
-        //        let urlString = Const.YELP_URL_ENDPOINT +
-        //        "/search?latitude=\(location.coordinate.latitude)&longitude=\(location.coordinate.longitude)&categories=\(category)&limit=6"
-        //
-        //        let url = URL(string: urlString)
+        var urlComponents = URLComponents(string: Constants.YELP_URL_ENDPOINT)
         
-        var urlComponents = URLComponents(string: Const.YELP_URL_ENDPOINT)
         urlComponents?.queryItems = [
             URLQueryItem(name: "latitude", value: String(location.coordinate.latitude)),
             URLQueryItem(name: "longitude", value: String(location.coordinate.longitude)),
             URLQueryItem(name: "categories", value: category),
             URLQueryItem(name: "limit", value: "6")
-            
         ]
         
         let url = urlComponents?.url
@@ -75,8 +71,9 @@ class ContentModel: NSObject, ObservableObject, CLLocationManagerDelegate {
             
             //create url request
             var request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 10.0)
+            //MARK: Optional Headers
             request.httpMethod = "GET"
-            request.addValue("Bearer " + Const.YELP_API_KEY, forHTTPHeaderField: "Authorization")
+            request.addValue("Bearer " + Constants.YELP_API_KEY, forHTTPHeaderField: "Authorization")
             //get url session
             let session = URLSession.shared
             
@@ -85,7 +82,29 @@ class ContentModel: NSObject, ObservableObject, CLLocationManagerDelegate {
                 //check no error
                 if error == nil{
                     
-                    print(response)
+                    //MARK: Parse JSON Response
+                    
+                    do {
+                        
+                        let decoder = JSONDecoder()
+                        let result =  try decoder.decode(BusinesSearch.self, from: data!)
+                        
+                        DispatchQueue.main.async {
+                            //Assign results to published property
+                            
+                            switch category {
+                            case Constants.sightsKey:
+                                self.sights = result.businesses
+                            case Constants.restaurantsKey:
+                                self.sights = result.businesses
+                            default:
+                                break
+                            }
+                        }
+                        
+                    } catch {
+                        print(error)
+                    }
                 }
             }
             
